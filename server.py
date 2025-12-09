@@ -33,6 +33,12 @@ def calculate_rsi(series, period=14):
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 
+@app.route('/')
+def home():
+    return "<h1>Server is Running! 🚀</h1><p>Go to <a href='/login'>/login</a> to authenticate.</p>"
+
+
+
 @app.route('/login')
 def login():
     global fyers, access_token
@@ -138,3 +144,4 @@ if __name__ == '__main__':
     webbrowser.open("http://127.0.0.1:5000/login")
 
     app.run(port=5000)
+
