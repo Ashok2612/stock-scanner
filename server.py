@@ -15,7 +15,7 @@ CORS(app)
 # ==============================================================================
 client_id = "J3PIUDQS20-100"      # <--- PASTE YOUR ID HERE
 secret_key = "8TM69GG411"       # <--- PASTE YOUR SECRET HERE
-redirect_uri = "https://stock-scanner-vcza.onrender.com"
+redirect_uri = "https://stock-scanner-vcza.onrender.com/login"
 # ==============================================================================
 
 access_token = None
@@ -144,4 +144,5 @@ if __name__ == '__main__':
     webbrowser.open("http://127.0.0.1:5000/login")
 
     app.run(port=5000)
+
 
