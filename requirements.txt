@@ -4,3 +4,4 @@ pandas
 nselib
 mplfinance
 numpy
+pandas_market_calendars
