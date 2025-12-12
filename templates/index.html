@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swing Trade Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f7fafc; margin: 0; padding: 20px; color: #2d3748; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { text-align: center; color: #1a202c; }
+        .tabs { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; }
+        button { padding: 10px 20px; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.2s; }
+        .btn-active { background: #3182ce; color: white; box-shadow: 0 4px 6px rgba(49,130,206,0.3); }
+        .btn-inactive { background: #edf2f7; color: #4a5568; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .symbol { font-size: 1.4rem; font-weight: 800; color: #2d3748; }
+        .price { font-size: 1.2rem; font-weight: 600; color: #38a169; }
+        .tag { display: inline-block; padding: 4px 10px; background: #ebf8ff; color: #2b6cb0; border-radius: 4px; font-size: 0.8rem; font-weight: 700; margin-top: 10px; }
+        .loader { text-align: center; margin-top: 50px; font-size: 1.2rem; color: #718096; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🚀 Swing Trading Dashboard</h1>
+    
+    <div class="tabs">
+        <button id="btn-signals" class="btn-active" onclick="switchTab('signals')">🎯 Buy Signals</button>
+        <button id="btn-watchlist" class="btn-inactive" onclick="switchTab('watchlist')">📈 Watchlist</button>
+    </div>
+
+    <div id="content" class="grid">
+        </div>
+    <div id="loader" class="loader">📡 Scanning Market Data...</div>
+</div>
+
+<script>
+    // ⚠️ PASTE YOUR RAW GITHUB LINKS HERE ⚠️
+    const SIGNALS_URL = "https://raw.githubusercontent.com/Ashok2612/stock-scanner/main/buy_signals.csv";
+    const WATCHLIST_URL = "https://raw.githubusercontent.com/Ashok2612/stock-scanner/main/uptrend_watchlist.csv";
+
+    let buySignals = [];
+    let watchlist = [];
+    let activeTab = 'signals';
+
+    async function loadData() {
+        try {
+            const [res1, res2] = await Promise.all([ fetch(SIGNALS_URL), fetch(WATCHLIST_URL) ]);
+            if (res1.ok) buySignals = parseCSV(await res1.text());
+            if (res2.ok) watchlist = parseCSV(await res2.text());
+            render();
+            document.getElementById('loader').style.display = 'none';
+        } catch (e) {
+            document.getElementById('loader').innerText = "❌ Error loading data. Check console.";
+        }
+    }
+
+    function parseCSV(text) {
+        const lines = text.trim().split('\n');
+        if (lines.length < 2) return [];
+        const headers = lines[0].split(',');
+        return lines.slice(1).map(line => {
+            const values = line.split(',');
+            let obj = {};
+            headers.forEach((h, i) => obj[h.trim()] = values[i]?.trim());
+            return obj;
+        });
+    }
+
+    function switchTab(tab) {
+        activeTab = tab;
+        document.getElementById('btn-signals').className = tab === 'signals' ? 'btn-active' : 'btn-inactive';
+        document.getElementById('btn-watchlist').className = tab === 'watchlist' ? 'btn-active' : 'btn-inactive';
+        render();
+    }
+
+    function render() {
+        const data = activeTab === 'signals' ? buySignals : watchlist;
+        const container = document.getElementById('content');
+        container.innerHTML = '';
+
+        if (data.length === 0) {
+            container.innerHTML = '<p style="text-align:center; width:100%;">No stocks found today.</p>';
+            return;
+        }
+
+        data.forEach(stock => {
+            let details = '';
+            if (activeTab === 'signals') {
+                details = `<div>RSI: <strong>${stock.RSI}</strong></div><div class="tag">⚡ ${stock.Type}</div>`;
+            } else {
+                details = `<div>50 SMA: <strong>${stock.SMA_50}</strong></div><div>200 SMA: <strong>${stock.SMA_200}</strong></div>`;
+            }
+
+            const card = `
+                <div class="card">
+                    <div class="header">
+                        <span class="symbol">${stock.Symbol}</span>
+                        <span class="price">₹${stock.Close}</span>
+                    </div>
+                    <div style="font-size:0.9rem; color:#4a5568;">
+                        ${details}
+                    </div>
+                </div>
+            `;
+            container.innerHTML += card;
+        });
+    }
+
+    loadData();
+</script>
+
+</body>
+</html>
