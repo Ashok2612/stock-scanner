@@ -2,14 +2,14 @@ import pandas as pd
 import numpy as np
 
 # --- CONFIGURATION ---
-SIGNAL_MA = 61          # 61 SMA Crossover
-RSI_MIN = 55            # RSI Bottom
-RSI_MAX = 65            # RSI Top
-TREND_LONG = 200        # Price > 200 SMA
-TREND_SHORT = 50        # Price > 50 SMA
-MIN_VOLUME = 50000      # Liquidity
+SIGNAL_MA = 61          
+RSI_MIN = 55            
+RSI_MAX = 65            
+TREND_LONG = 200        
+TREND_SHORT = 50        
+MIN_VOLUME = 50000      
 
-print("--- STARTING MASTER SCAN (ROBUST MODE) ---")
+print("--- STARTING MASTER SCAN (FORCE FIX MODE) ---")
 
 # 1. Helper: RSI
 def calculate_rsi(series, period=14):
@@ -21,37 +21,55 @@ def calculate_rsi(series, period=14):
     rs = avg_gain / avg_loss
     return 100 - (100 / (1 + rs))
 
-# 2. Load Data
+# 2. Load and CLEAN Data
 try:
     print("Loading database...", end=" ")
     df = pd.read_csv("all_stock_data.csv")
-    df.columns = [c.strip() for c in df.columns] 
-    df['Date'] = pd.to_datetime(df['Date'], format='%d-%m-%Y', errors='coerce')
+    
+    # Clean Column Names
+    df.columns = [c.strip() for c in df.columns]
+    
+    # --- CRITICAL FIX 1: Handle Date Format (07-Apr-2025) ---
+    # We use %b for "Apr", "May", etc.
+    df['Date'] = pd.to_datetime(df['Date'], format='%d-%b-%Y', errors='coerce')
+    
+    # If the above failed (resulting in NaT), try the number format just in case
+    if df['Date'].isnull().all():
+         df['Date'] = pd.to_datetime(df['Date'], format='%d-%m-%Y', errors='coerce')
+    
+    # --- CRITICAL FIX 2: Force Convert Prices to Numbers ---
+    cols_to_fix = ['Close', 'Open', 'High', 'Low', 'Volume']
+    
+    for col in cols_to_fix:
+        if col in df.columns:
+            # Convert to string, remove commas, then convert to float
+            df[col] = df[col].astype(str).str.replace(',', '', regex=False)
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+    # Drop rows where data is bad (NaN)
+    df.dropna(subset=['Close', 'Date'], inplace=True)
+    
+    # Sort data
     df = df.sort_values(by=['Symbol', 'Date'])
     
-    # --- THE CRITICAL FIX: Convert Columns to Numbers ---
-    cols_to_fix = ['Close', 'Open', 'High', 'Low', 'Volume']
-    for col in cols_to_fix:
-        # 1. Force to string first
-        df[col] = df[col].astype(str)
-        # 2. Remove commas (e.g. "1,200" -> "1200")
-        df[col] = df[col].str.replace(',', '')
-        # 3. Convert to number (Coerce errors to NaN)
-        df[col] = pd.to_numeric(df[col], errors='coerce')
-        
-    print("Done & Cleaned.")
-    
+    print("Done.")
+    print(f"Data Types Check:\n{df.dtypes}") # Proof it worked
+
 except FileNotFoundError:
-    print("Error: 'all_stock_data.csv' not found.")
+    print("\nError: 'all_stock_data.csv' not found.")
     exit()
 
 # 3. Analysis Logic
 def check_strategies(stock_df):
+    # Need enough data
     if len(stock_df) < 200: return None, None
 
+    # Calculate Indicators
+    # We copy to avoid "SettingWithCopy" warnings
+    stock_df = stock_df.copy()
     closes = stock_df['Close']
     
-    # Calculate MAs
+    # MAs
     ma_signal = closes.rolling(window=SIGNAL_MA).mean()
     ma_200 = closes.rolling(window=TREND_LONG).mean()
     ma_50 = closes.rolling(window=TREND_SHORT).mean()
@@ -70,7 +88,8 @@ def check_strategies(stock_df):
     cur_signal_ma = ma_signal.iloc[-1]
 
     # Skip NaN
-    if pd.isna(today_rsi) or pd.isna(today_200): return None, None
+    if pd.isna(today_rsi) or pd.isna(today_200) or pd.isna(cur_signal_ma): 
+        return None, None
 
     # Volume Filter
     if today_vol < MIN_VOLUME: return None, None
@@ -84,6 +103,7 @@ def check_strategies(stock_df):
         signal_result = {
             'Symbol': stock_df['Symbol'].iloc[-1],
             'Close': today_close,
+            'Date': stock_df['Date'].iloc[-1].strftime('%Y-%m-%d'),
             'Type': 'Buy Signal',
             'RSI': round(today_rsi, 2)
         }
@@ -114,7 +134,9 @@ for i, (symbol, stock_data) in enumerate(grouped):
         sig, trend = check_strategies(stock_data)
         if sig: buy_signals.append(sig)
         if trend: watchlist.append(trend)
-    except: continue
+    except Exception as e:
+        # print(f"Skipping {symbol}: {e}") # Uncomment to see specific errors
+        continue
 
 print(f"Scanning... [{total}/{total}] - Done!      ")
 
@@ -137,7 +159,6 @@ if watchlist:
     df_watch = pd.DataFrame(watchlist)
     df_watch.to_csv("uptrend_watchlist.csv", index=False)
     print(f" [i] Found {len(df_watch)} stocks in Strong Uptrend")
-    print(f"     (Top 5 examples)")
-    print(df_watch.head().to_string(index=False))
+    # print(df_watch.head().to_string(index=False))
 else:
     print(" [ ] No Uptrend stocks found.")
