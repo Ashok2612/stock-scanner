@@ -1,7 +1,6 @@
 flask
-flask-cors
-fyers-apiv3
-pandas
 gunicorn
-requests
+pandas
+nselib
+mplfinance
 numpy
