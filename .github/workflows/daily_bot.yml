@@ -1,3 +1,41 @@
-git add .
-git commit -m "Added Daily Automation Robot"
-git push
+name: Daily Stock Scanner
+
+# Schedule: Runs at 11:00 UTC (4:30 PM IST) every Mon-Fri
+on:
+  schedule:
+    - cron: '30 11 * * 1-5'
+  # Allows you to run it manually from the "Actions" tab for testing
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-scanner:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install Libraries
+      run: |
+        # Use the requirements.txt file to install packages
+        pip install -r requirements.txt
+    
+    - name: Run Fetch & Analyze
+      run: |
+        python fetch_prices.py
+        python analyze_stocks.py
+
+    - name: Commit and Push Results
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "Automated Daily Update 🚀"
+        branch: main
+        file_pattern: "*.csv *.png"
