@@ -7,8 +7,8 @@ from flask import jsonify
 
 # --- IMPORTANT: Your Fyers API Credentials ---
 # REPLACE with your actual IDs (I have your originals, but use the correct ones here)
-CLIENT_ID = "YOUR_FYERS_CLIENT_ID" 
-TOKEN = "YOUR_FYERS_TOKEN" 
+CLIENT_ID = "J3PIUDQS20-10" 
+TOKEN = "8TM69GG411" 
 
 # Initialize the Fyers API Model
 try:
