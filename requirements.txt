@@ -5,3 +5,4 @@ nselib
 mplfinance
 numpy
 pandas_market_calendars
+fyers-api
